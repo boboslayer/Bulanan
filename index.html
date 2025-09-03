@@ -1,14 +1,19 @@
 <!DOCTYPE html>
 <html>
 <head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Catatan Pengeluaran</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1">
   <style>
-    body { font-family: Arial, sans-serif; max-width: 400px; margin: auto; padding: 10px; }
-    input, select, button { width: 100%; padding: 8px; margin: 5px 0; }
+    body { font-family: Arial; max-width: 400px; margin: auto; padding: 15px; background: #f9f9f9; }
+    form, table { background: #fff; padding: 15px; border-radius: 8px; box-shadow: 0 0 5px rgba(0,0,0,0.1); }
+    input, button { width: 100%; margin: 5px 0; padding: 8px; border: 1px solid #ddd; border-radius: 5px; }
+    button { background: #4CAF50; color: white; cursor: pointer; }
+    button:hover { background: #45a049; }
+    #status { text-align: center; margin: 10px 0; font-weight: bold; }
     table { width: 100%; border-collapse: collapse; margin-top: 20px; }
     th, td { border: 1px solid #ddd; padding: 8px; text-align: center; }
-    th { background: #f4f4f4; }
+    th { background: #4CAF50; color: white; }
   </style>
 </head>
 <body>
@@ -21,6 +26,8 @@
     <button type="submit">Simpan</button>
   </form>
 
+  <p id="status"></p>
+
   <table>
     <thead>
       <tr><th>Tanggal</th><th>Deskripsi</th><th>Kategori</th><th>Jumlah</th></tr>
@@ -29,9 +36,8 @@
   </table>
 
 <script>
-const API_URL = "https://script.google.com/macros/s/AKfycbxuEpLpMjmLq32AGCvtO40I06sokTGqlYBALybz7t4E3KkkYbthYUkWJ_t81TjO4AhE/exec; // ganti dengan URL Web App"
+const API_URL = "PASTE_URL_WEB_APP_DISINI"; // ganti dengan URL Web App kamu
 
-// Ambil data dari spreadsheet
 async function loadData() {
   let res = await fetch(API_URL);
   let data = await res.json();
@@ -48,21 +54,31 @@ async function loadData() {
   });
 }
 
-// Kirim data baru ke spreadsheet
 document.getElementById("form").addEventListener("submit", async (e) => {
   e.preventDefault();
+  let statusEl = document.getElementById("status");
+  statusEl.textContent = "Menyimpan...";
+  
   let data = {
     tanggal: document.getElementById("tanggal").value,
     deskripsi: document.getElementById("deskripsi").value,
     kategori: document.getElementById("kategori").value,
     jumlah: document.getElementById("jumlah").value
   };
-  await fetch(API_URL, {
-    method: "POST",
-    body: JSON.stringify(data)
-  });
-  loadData();
-  e.target.reset();
+
+  try {
+    let res = await fetch(API_URL, { method: "POST", body: JSON.stringify(data) });
+    let result = await res.json();
+    if (result.status === "success") {
+      statusEl.textContent = "✅ Tersimpan!";
+      loadData();
+      e.target.reset();
+    } else {
+      statusEl.textContent = "❌ Gagal menyimpan!";
+    }
+  } catch (err) {
+    statusEl.textContent = "❌ Gagal menyimpan!";
+  }
 });
 
 loadData();
