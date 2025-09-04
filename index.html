@@ -1,87 +1,89 @@
 <!DOCTYPE html>
-<html>
+<html lang="id">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Catatan Pengeluaran</title>
+  <title>Keuangan Anak Kos</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <style>
-    body { font-family: Arial; max-width: 400px; margin: auto; padding: 15px; background: #f9f9f9; }
-    form, table { background: #fff; padding: 15px; border-radius: 8px; box-shadow: 0 0 5px rgba(0,0,0,0.1); }
-    input, button { width: 100%; margin: 5px 0; padding: 8px; border: 1px solid #ddd; border-radius: 5px; }
-    button { background: #4CAF50; color: white; cursor: pointer; }
-    button:hover { background: #45a049; }
-    #status { text-align: center; margin: 10px 0; font-weight: bold; }
-    table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+    body { font-family: Arial, sans-serif; margin: 20px; }
+    h1 { color: #2c3e50; }
+    table { border-collapse: collapse; width: 100%; margin-top: 20px; }
     th, td { border: 1px solid #ddd; padding: 8px; text-align: center; }
-    th { background: #4CAF50; color: white; }
+    th { background: #f4f4f4; }
+    canvas { margin-top: 20px; }
   </style>
 </head>
 <body>
-  <h2>Catatan Pengeluaran</h2>
-  <form id="form">
-    <input type="date" id="tanggal" required>
-    <input type="text" id="deskripsi" placeholder="Deskripsi" required>
-    <input type="text" id="kategori" placeholder="Kategori" required>
-    <input type="number" id="jumlah" placeholder="Jumlah" required>
-    <button type="submit">Simpan</button>
-  </form>
+  <h1>📊 Keuangan Anak Kos</h1>
+  <div>
+    <strong>Total Pemasukan:</strong> <span id="income">0</span><br>
+    <strong>Total Pengeluaran:</strong> <span id="expense">0</span><br>
+    <strong>Saldo:</strong> <span id="balance">0</span>
+  </div>
 
-  <p id="status"></p>
-
-  <table>
+  <table id="data-table">
     <thead>
-      <tr><th>Tanggal</th><th>Deskripsi</th><th>Kategori</th><th>Jumlah</th></tr>
+      <tr>
+        <th>Tanggal</th>
+        <th>Kategori</th>
+        <th>Pemasukan</th>
+        <th>Pengeluaran</th>
+        <th>Catatan</th>
+      </tr>
     </thead>
-    <tbody id="data"></tbody>
+    <tbody></tbody>
   </table>
 
-<script>
-const API_URL = "https://script.google.com/macros/s/AKfycbzZEEhSNmLizo3-AyjiWENpw7iClDWet_zm6yGuOARUojk73kSo_Ago5kGZGnZzWm0H/exec"; // ganti dengan URL Web App kamu
+  <canvas id="chart"></canvas>
 
-async function loadData() {
-  let res = await fetch(API_URL);
-  let data = await res.json();
-  let tbody = document.getElementById("data");
-  tbody.innerHTML = "";
-  data.slice(1).forEach(row => {
-    let tr = document.createElement("tr");
-    row.forEach(cell => {
-      let td = document.createElement("td");
-      td.textContent = cell;
-      tr.appendChild(td);
-    });
-    tbody.appendChild(tr);
-  });
-}
+  <script>
+    const SHEET_ID = "1vtBoXowKVhx3BTWHyG6kHVVkExyTAC7dk8BUbqG1F_o";
+    const API_KEY = "AIzaSyB18kOyrmi84Vp0cfnqSgiMqDY8tsmag6Q";
+    const RANGE = "Sheet1!A:E";
 
-document.getElementById("form").addEventListener("submit", async (e) => {
-  e.preventDefault();
-  let statusEl = document.getElementById("status");
-  statusEl.textContent = "Menyimpan...";
-  
-  let data = {
-    tanggal: document.getElementById("tanggal").value,
-    deskripsi: document.getElementById("deskripsi").value,
-    kategori: document.getElementById("kategori").value,
-    jumlah: document.getElementById("jumlah").value
-  };
+    const url = `https://sheets.googleapis.com/v4/spreadsheets/${SHEET_ID}/values/${RANGE}?key=${API_KEY}`;
 
-  try {
-    let res = await fetch(API_URL, { method: "POST", body: JSON.stringify(data) });
-    let result = await res.json();
-    if (result.status === "success") {
-      statusEl.textContent = "✅ Tersimpan!";
-      loadData();
-      e.target.reset();
-    } else {
-      statusEl.textContent = "❌ Gagal menyimpan!";
-    }
-  } catch (err) {
-    statusEl.textContent = "❌ Gagal menyimpan!";
-  }
-});
+    fetch(url)
+      .then(res => res.json())
+      .then(data => {
+        const rows = data.values.slice(1); // skip header
+        const tbody = document.querySelector("#data-table tbody");
+        let income = 0, expense = 0;
+        let labels = [], cashflow = [];
 
-loadData();
-</script>
+        rows.forEach(r => {
+          let [tgl, kategori, pemasukan, pengeluaran, catatan] = r;
+          pemasukan = Number(pemasukan || 0);
+          pengeluaran = Number(pengeluaran || 0);
+
+          income += pemasukan;
+          expense += pengeluaran;
+
+          const tr = document.createElement("tr");
+          tr.innerHTML = `<td>${tgl}</td><td>${kategori}</td><td>${pemasukan}</td><td>${pengeluaran}</td><td>${catatan}</td>`;
+          tbody.appendChild(tr);
+
+          labels.push(tgl);
+          cashflow.push(pemasukan - pengeluaran);
+        });
+
+        document.getElementById("income").textContent = income.toLocaleString();
+        document.getElementById("expense").textContent = expense.toLocaleString();
+        document.getElementById("balance").textContent = (income - expense).toLocaleString();
+
+        new Chart(document.getElementById("chart"), {
+          type: "line",
+          data: {
+            labels,
+            datasets: [{
+              label: "Cashflow Harian",
+              data: cashflow,
+              borderColor: "blue",
+              fill: false
+            }]
+          }
+        });
+      });
+  </script>
 </body>
 </html>
