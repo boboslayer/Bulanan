@@ -1,1 +1,140 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <title>Keuangan Anak Kos</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 20px; }
+    h1 { color: #2c3e50; }
+    form { margin-bottom: 30px; padding: 15px; border: 1px solid #ddd; border-radius: 10px; }
+    input, button { margin: 5px 0; padding: 8px; width: 100%; }
+    table { border-collapse: collapse; width: 100%; margin-top: 20px; }
+    th, td { border: 1px solid #ddd; padding: 8px; text-align: center; }
+    th { background: #f4f4f4; }
+    canvas { margin-top: 20px; }
+  </style>
+</head>
+<body>
+  <h1>📊 Keuangan Anak Kos</h1>
 
+  <!-- Form Input -->
+  <h2>Tambah Transaksi</h2>
+  <form id="transaction-form">
+    <input type="date" id="tanggal" required>
+    <input type="text" id="kategori" placeholder="Kategori" required>
+    <input type="number" id="pemasukan" placeholder="Pemasukan">
+    <input type="number" id="pengeluaran" placeholder="Pengeluaran">
+    <input type="text" id="catatan" placeholder="Catatan">
+    <button type="submit">Tambah</button>
+  </form>
+
+  <!-- Ringkasan -->
+  <div>
+    <strong>Total Pemasukan:</strong> <span id="income">0</span><br>
+    <strong>Total Pengeluaran:</strong> <span id="expense">0</span><br>
+    <strong>Saldo:</strong> <span id="balance">0</span>
+  </div>
+
+  <!-- Tabel Data -->
+  <table id="data-table">
+    <thead>
+      <tr>
+        <th>Tanggal</th>
+        <th>Kategori</th>
+        <th>Pemasukan</th>
+        <th>Pengeluaran</th>
+        <th>Catatan</th>
+      </tr>
+    </thead>
+    <tbody></tbody>
+  </table>
+
+  <!-- Grafik -->
+  <canvas id="chart"></canvas>
+
+  <script>
+    // 🔑 Ganti dengan data kamu
+    const SHEET_ID = "1vtBoXowKVhx3BTWHyG6kHVVkExyTAC7dk8BUbqG1F_o";
+    const API_KEY = "AIzaSyB18kOyrmi84Vp0cfnqSgiMqDY8tsmag6Q";
+    const RANGE = "Sheet1!A:E";
+    const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzfVxhjClHhHe0Mi5-j4htob680838XPPS4oJSiYUhqJCOeIqIum2hWwkgnYBJA0cMosw/exec"; // Web App dari Apps Script
+
+    // Fungsi baca data dari Google Sheets API
+    function loadData() {
+      const url = https://sheets.googleapis.com/v4/spreadsheets/${SHEET_ID}/values/${RANGE}?key=${API_KEY};
+      
+      fetch(url)
+        .then(res => res.json())
+        .then(data => {
+          const rows = data.values.slice(1); // skip header
+          const tbody = document.querySelector("#data-table tbody");
+          tbody.innerHTML = ""; // reset table
+          let income = 0, expense = 0;
+          let labels = [], cashflow = [];
+
+          rows.forEach(r => {
+            let [tgl, kategori, pemasukan, pengeluaran, catatan] = r;
+            pemasukan = Number(pemasukan || 0);
+            pengeluaran = Number(pengeluaran || 0);
+
+            income += pemasukan;
+            expense += pengeluaran;
+
+            const tr = document.createElement("tr");
+            tr.innerHTML = <td>${tgl}</td><td>${kategori}</td><td>${pemasukan}</td><td>${pengeluaran}</td><td>${catatan}</td>;
+            tbody.appendChild(tr);
+
+            labels.push(tgl);
+            cashflow.push(pemasukan - pengeluaran);
+          });
+
+          document.getElementById("income").textContent = income.toLocaleString();
+          document.getElementById("expense").textContent = expense.toLocaleString();
+          document.getElementById("balance").textContent = (income - expense).toLocaleString();
+
+          new Chart(document.getElementById("chart"), {
+            type: "line",
+            data: {
+              labels,
+              datasets: [{
+                label: "Cashflow Harian",
+                data: cashflow,
+                borderColor: "blue",
+                fill: false
+              }]
+            }
+          });
+        });
+    }
+
+    // Form submit untuk nambah data
+    document.getElementById("transaction-form").addEventListener("submit", e => {
+      e.preventDefault();
+
+      const data = {
+        tanggal: document.getElementById("tanggal").value,
+        kategori: document.getElementById("kategori").value,
+        pemasukan: document.getElementById("pemasukan").value,
+        pengeluaran: document.getElementById("pengeluaran").value,
+        catatan: document.getElementById("catatan").value
+      };
+
+      fetch(SCRIPT_URL, {
+        method: "POST",
+        body: JSON.stringify(data)
+      })
+      .then(res => res.json())
+      .then(r => {
+        alert("Transaksi berhasil ditambahkan!");
+        document.getElementById("transaction-form").reset();
+        loadData(); // refresh data
+      })
+      .catch(err => alert("Error: " + err));
+    });
+
+    // Load data pertama kali
+    loadData();
+  </script>
+</body>
+</html>
